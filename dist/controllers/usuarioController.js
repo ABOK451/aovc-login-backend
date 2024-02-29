@@ -8,13 +8,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.usuarioController = void 0;
+const connection_1 = __importDefault(require("../utils/connection"));
+const utils_1 = require("../utils/utils");
 class UsuarioController {
     list(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return res.json({ message: "Listado de Usuario", code: 0 });
+                const result = yield connection_1.default.then((connection) => __awaiter(this, void 0, void 0, function* () {
+                    return yield connection.query("SELECT * FROM tbl_usuario");
+                }));
+                res.json(result);
             }
             catch (error) {
                 return res.status(500).json({ message: `${error.message}` });
@@ -24,7 +32,15 @@ class UsuarioController {
     add(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return res.json({ message: "Agregar Usuario", code: 0 });
+                var encryptedText = yield utils_1.utils.hashPassword(req.body.password);
+                if (!encryptedText) {
+                    return res.status(500).json({ message: "Error hashing password" });
+                }
+                req.body.password = encryptedText;
+                const result = yield connection_1.default.then((connection) => __awaiter(this, void 0, void 0, function* () {
+                    return yield connection.query('INSERT INTO tbl_usuario SET ?', req.body);
+                }));
+                res.json({ text: "usuario agregado" });
             }
             catch (error) {
                 return res.status(500).json({ message: `${error.message}` });
@@ -33,8 +49,17 @@ class UsuarioController {
     }
     update(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            const { email } = req.body;
+            const updateUser = req.body;
             try {
-                return res.json({ message: "Modificación de Usuario", code: 0 });
+                if (req.body.usuario && req.body.usuario.password) {
+                    var encryptedText = yield utils_1.utils.hashPassword(req.body.password);
+                    req.body.password = encryptedText;
+                }
+                const result = yield connection_1.default.then((connection) => __awaiter(this, void 0, void 0, function* () {
+                    return yield connection.query("UPDATE tbl_usuario SET ? WHERE email = ?", [updateUser, email]);
+                }));
+                res.json({ text: "Usuario con el " + email + " ha sido actualizado" });
             }
             catch (error) {
                 return res.status(500).json({ message: `${error.message}` });
@@ -44,7 +69,11 @@ class UsuarioController {
     delete(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                return res.json({ message: "Eliminación de Usuario", code: 0 });
+                const { email } = req.body;
+                console.log('Email:', email);
+                const connection = yield connection_1.default;
+                const result = yield connection.query('DELETE FROM tbl_usuario WHERE email = ?', [email]);
+                return res.json({ text: "Usuario con el correo " + email + " ha sido eliminado" });
             }
             catch (error) {
                 return res.status(500).json({ message: `${error.message}` });

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import validator from "validator";
 import model from "../models/usuarioModelo";
+import pool from "../utils/connection";
+import { utils } from "../utils/utils";
 
 
 class UsuarioController {
@@ -8,38 +10,78 @@ class UsuarioController {
 
   public async list(req: Request, res: Response) {
     try {
-      return res.json({ message: "Listado de Usuario", code: 0 });
+        const result=await pool.then(async(connection)=>{
+            return await connection.query(
+                "SELECT * FROM tbl_usuario"
+            )
+        })
+
+        res.json(result)
     } catch (error: any) {
         return res.status(500).json({ message: `${error.message}` });
     }
   }
 
 
-  public async add(req: Request, res: Response) {
+  public async add(req: Request, res: Response): Promise<void> {
     try {
-      return res.json({ message: "Agregar Usuario", code: 0 });
+        var encryptedText = await utils.hashPassword(req.body.password);
+        if (!encryptedText) {
+            return res.status(500).json({ message: "Error hashing password" });
+        }
+        req.body.password = encryptedText;
+        const result = await pool.then(async (connection) => {
+            return await connection.query('INSERT INTO tbl_usuario SET ?', req.body);
+        });   
+        res.json({ text: "usuario agregado" });
     } catch (error: any) {
-      return res.status(500).json({ message: `${error.message}` });
+        
+        return res.status(500).json({ message: `${error.message}` });
     }
-  }
+}
 
 
-  public async update(req: Request, res: Response) {
+
+public async update(req: Request, res: Response): Promise<void> {
+    const { email } = req.body;
+    const updateUser = req.body;
+
     try {
-      return res.json({ message: "Modificación de Usuario", code: 0 });
+        if (req.body.usuario && req.body.usuario.password) {
+            var encryptedText = await utils.hashPassword(req.body.password);
+            req.body.password = encryptedText;
+        }
+
+        const result = await pool.then(async (connection) => {
+            return await connection.query(
+                "UPDATE tbl_usuario SET ? WHERE email = ?", [updateUser, email]
+            );
+        });
+
+        res.json({ text: "Usuario con el " + email + " ha sido actualizado" });
     } catch (error: any) {
-      return res.status(500).json({ message: `${error.message}` });
+        return res.status(500).json({ message: `${error.message}` });
     }
-  }
+}
 
 
-  public async delete(req: Request, res: Response) {
-    try {
-      return res.json({ message: "Eliminación de Usuario", code: 0 });
-    } catch (error: any) {
-      return res.status(500).json({ message: `${error.message}` });
+    public async delete(req: Request, res: Response): Promise<any> {
+        try {
+            const { email } = req.body;
+
+            console.log('Email:', email);
+
+            const connection = await pool;
+            const result = await connection.query(
+                'DELETE FROM tbl_usuario WHERE email = ?',
+                [email]
+            );
+
+            return res.json({ text: "Usuario con el correo " + email + " ha sido eliminado" });
+        } catch (error: any) {
+            return res.status(500).json({ message: `${error.message}` });
+        }
     }
-  }
 }
 export const usuarioController = new UsuarioController();
 
