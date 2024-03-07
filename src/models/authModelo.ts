@@ -1,4 +1,5 @@
-import pool from '../utils/connection'
+import pool from '../utils/connection';
+
 
 class AuthModelo {
  
