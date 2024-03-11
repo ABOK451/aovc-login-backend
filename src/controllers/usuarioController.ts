@@ -25,20 +25,35 @@ class UsuarioController {
 
   public async add(req: Request, res: Response): Promise<void> {
     try {
-        var encryptedText = await utils.hashPassword(req.body.password);
-        if (!encryptedText) {
-            return res.status(500).json({ message: "Error hashing password" });
+        if (!validator.isEmail(req.body.email)) {
+            return res.status(400).json({ message: "Correo electrónico no válido" });
         }
+
+        if (!validator.isStrongPassword(req.body.password, { minLength: 8 })) {
+            return res.status(400).json({ message: "La contraseña debe ser segura y tener al menos 8 caracteres" });
+        }
+
+        if (!req.body.password) {
+            return res.status(400).json({ message: "La contraseña no puede estar vacía" });
+        }
+
+        const encryptedText = await utils.hashPassword(req.body.password);
+        if (!encryptedText) {
+            return res.status(500).json({ message: "Error al cifrar la contraseña" });
+        }
+        
         req.body.password = encryptedText;
+
         const result = await pool.then(async (connection) => {
             return await connection.query('INSERT INTO tbl_usuario SET ?', req.body);
-        });   
-        res.json({ text: "usuario agregado" });
+        });
+
+        res.json({ text: "Usuario agregado exitosamente" });
     } catch (error: any) {
-        
         return res.status(500).json({ message: `${error.message}` });
     }
 }
+
 
 
 
@@ -47,6 +62,15 @@ public async update(req: Request, res: Response): Promise<void> {
     const updateUser = req.body;
 
     try {
+
+        if (req.body.email && !validator.isEmail(req.body.email)) {
+            return res.status(400).json({ message: "Correo electrónico no válido" });
+          }
+    
+          if (req.body.password && !validator.isStrongPassword(req.body.password)) {
+            return res.status(400).json({ message: "La contraseña debe ser segura" });
+          }
+
         if (req.body.usuario && req.body.usuario.password) {
             var encryptedText = await utils.hashPassword(req.body.password);
             req.body.password = encryptedText;
@@ -70,6 +94,10 @@ public async update(req: Request, res: Response): Promise<void> {
             const { email } = req.body;
 
             console.log('Email:', email);
+
+            if (!validator.isEmail(email)) {
+                return res.status(400).json({ message: "Correo electrónico no válido" });
+            }
 
             const connection = await pool;
             const result = await connection.query(
